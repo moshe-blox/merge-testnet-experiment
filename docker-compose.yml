@@ -1,0 +1,32 @@
+version: "3.4"
+services:
+  init_geth:
+    image: parithoshj/geth:merge-b951e9c
+    volumes:
+      - ./execution_data:/execution_data
+      - ./genesis.json:/custom_config_data/genesis.json
+      - ./secrets:/root/secrets
+    entrypoint: /bin/sh
+    command: -c "geth --datadir=/execution_data init /custom_config_data/genesis.json && geth --datadir=/execution_data account import --password /root/secrets/empty-password /root/secrets/geth-private-key"
+  geth:
+    image: parithoshj/geth:merge-50db957
+    ports:
+      - "5545:8545"
+    depends_on:
+      - init_local_testnet_geth
+    volumes:
+      - ./execution_data:/execution_data
+      - ./secrets:/root/secrets
+    command: >
+      --datadir=/execution_data --networkid=4242 --http --http.addr 0.0.0.0
+      --http.api "engine,net,eth" --ws --ws.api "engine,net,eth" --allow-insecure-unlock --unlock 0x49011adbCC3bC9c0307BB07F37Dda1a1a9c69d2E --password /root/secrets/empty-password
+      --ipcpath /geth.ipc --http.vhosts "*" --nodiscover --mine --miner.threads 1 --miner.etherbase 0x49011adbCC3bC9c0307BB07F37Dda1a1a9c69d2E
+  lighthouse:
+    image: mosheblox/lighthouse-testnet:latest
+    volumes:
+      - ./lighthouse-scripts:/custom_local_testnet
+      - ./lighthouse-data:/root/.lighthouse
+    ports:
+      - "8001:8001"
+    depends_on:
+      - geth
